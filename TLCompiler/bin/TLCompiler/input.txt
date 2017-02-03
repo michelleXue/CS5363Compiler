@@ -1,0 +1,3 @@
+while SQRT * SQRT <= N do
+% while SQRT * SQRT <= N do
+while SQRT % * SQRT <= N do
