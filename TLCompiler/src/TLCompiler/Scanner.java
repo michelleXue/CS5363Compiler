@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,7 +14,8 @@ import java.util.regex.Pattern;
 * @author Tuan Dinh, Xue Qin
 */
 public class Scanner {
-	public static HashMap<String, String> OPERATOR = new HashMap<String, String>();
+	public static HashMap<String, String> MULTIPLE_OPERATOR = new HashMap<String, String>();
+	public static HashMap<String, String> SINGLE_OPERATOR = new HashMap<String, String>();
 	public static HashMap<String, String> KEYWORDS = new HashMap<String, String>();
 	public static HashMap<String, String> PROCEDURES = new HashMap<String, String>();
 	public Scanner() {
@@ -22,18 +24,19 @@ public class Scanner {
 	
 	public static void loadDictionary(){
 		
-		OPERATOR.put("(", "LP");
-		OPERATOR.put(")", "RP");
-		OPERATOR.put(":=", "ASGN");
-		OPERATOR.put(";", "SC");
-		OPERATOR.put("*", "MULTIPLICATIVE");
-		OPERATOR.put("div", "MULTIPLICATIVE");
-		OPERATOR.put("mod", "MULTIPLICATIVE");
-		OPERATOR.put("+", "ADDITIVE");
-		OPERATOR.put("-", "ADDITIVE");
+		SINGLE_OPERATOR.put("(", "LP");
+		SINGLE_OPERATOR.put(")", "RP");
+		SINGLE_OPERATOR.put(":=", "ASGN");
+		SINGLE_OPERATOR.put(";", "SC");
+		
+		MULTIPLE_OPERATOR.put("*", "MULTIPLICATIVE");
+		MULTIPLE_OPERATOR.put("div", "MULTIPLICATIVE");
+		MULTIPLE_OPERATOR.put("mod", "MULTIPLICATIVE");
+		MULTIPLE_OPERATOR.put("+", "ADDITIVE");
+		MULTIPLE_OPERATOR.put("-", "ADDITIVE");
 		String[] list = {"=","!=","<",">","<=",">="};
 		for (String s: list){
-			OPERATOR.put(s, "COMPARE");
+			MULTIPLE_OPERATOR.put(s, "COMPARE");
 		}
 		String[] key = {"if","then", "else", "begin", "end", "while", "do", "program", "var", "as", "int", "bool"};
 		for (String s: key){
@@ -42,10 +45,16 @@ public class Scanner {
 		
 		PROCEDURES.put("writeInt", "WRITEINT");
 		PROCEDURES.put("readInt", "READINT");
+		PROCEDURES.put("writeint", "WRITEINT");
+		PROCEDURES.put("readint", "READINT");
 	}
 	
-	public static boolean isOperator(String key){
-		return OPERATOR.containsKey(key);
+	public static boolean isSingleOperator(String key){
+		return SINGLE_OPERATOR.containsKey(key);
+	}
+	
+	public static boolean isMultipleOperator(String key){
+		return MULTIPLE_OPERATOR.containsKey(key);
 	}
 
 	
@@ -97,48 +106,82 @@ public class Scanner {
 	    return matcher.matches();
 	}
 	
+	/* Don't need that
 	public static boolean isSeparator(String key){
-		if (key.isEmpty() || key.equalsIgnoreCase(";"))
+		if (isOperator(key) && key.equalsIgnoreCase(";"))
 			return true;
 		else
 			return false;
 	}
-	
+	*/
 	
 	public static void scan (String inputFilePath){
 		loadDictionary();
+
+		int line_num = 0;
+		int token_num =0;
 		
-		try(BufferedReader br = new BufferedReader(new FileReader(inputFilePath))) {
+		
+		try(BufferedReader br = new BufferedReader(new FileReader(inputFilePath+".tl"))) {
+			
+			
+			String tokenList = "";
+			
 		    for(String line; (line = br.readLine()) != null; ) {
 		        // process the line.
-		    	
-		    	String[] list = line.split("\\s");
+				token_num = 0;
+		    	line_num++;
+				
+				line = line.trim();
+				if (line.equals(""))
+					continue; //skip the empty line
+				
+		    	String[] list = line.split("\\s+");
 		    	
 		    	for (String token: list){
+					token_num++;
 		    		if (isComment(token))
 						break;
-		    		else if (isSeparator(token))
-		    			;  //do nothing
+		    		else if (isSingleOperator(token))
+		    			tokenList+= (SINGLE_OPERATOR.get(token)) +"\n";  //print out SC, LP,RP
 		    		else if (isBoollit(token))
-		    			System.out.println("boollit"+ "(" + token +")");		    		
+		    			tokenList +=("boollit"+ "(" + token +")")+"\n";		    		
 		    		else if (isNumber(token))
-		    			System.out.println("num"+ "(" + token +")");
+		    			tokenList +=("num"+ "(" + token +")")+"\n";
 		    		else if (isKeyword(token))
-		    			System.out.println(KEYWORDS.get(token));
-		    		else if (isOperator(token))
-		    			System.out.println(OPERATOR.get(token) + "("+token+")");
+		    			tokenList +=(KEYWORDS.get(token))+"\n";
+		    		else if (isMultipleOperator(token))
+		    			tokenList +=(MULTIPLE_OPERATOR.get(token) + "("+token+")")+"\n";
 		    		else if (isProcedure(token))
-		    			System.out.println(PROCEDURES.get(token));
+		    			tokenList +=(PROCEDURES.get(token))+"\n";
 		    		else if (isIdent(token))
-		    			System.out.println("indent"+ "(" + token +")");
+		    			tokenList +=("ident"+ "(" + token +")")+"\n";
 		    		else {
-		    			System.err.println("Illegal token found: " + token);
+		    			System.err.println("Illegal token found: " + token + ", line " +line_num +", token " +token_num);
 			    		System.exit(1);
 		    		}
 		    			
 		    			
 		    	}
+				
+				
 		    }
+			
+			//remove the last new line character
+			if (tokenList.length() > 0 && tokenList.charAt(tokenList.length()-1)=='\n') {
+			      tokenList = tokenList.substring(0, tokenList.length()-1);
+			    }
+			
+			//put it to the file
+			FileWriter writer = null;
+			    try {
+			        writer = new FileWriter(inputFilePath+".tok");
+			        writer.write(tokenList);
+			        writer.close();
+			    } catch (IOException e) {
+			        e.printStackTrace();
+			    }
+			
 		    // line is not visible here.
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
