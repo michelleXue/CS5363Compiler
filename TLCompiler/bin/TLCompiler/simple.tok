@@ -1,0 +1,17 @@
+PROGRAM
+VAR
+ident(X)
+AS
+INT
+SC
+BEGIN
+ident(X)
+ASGN
+READINT
+SC
+WRITEINT
+num(2)
+MULTIPLICATIVE(*)
+ident(X)
+SC
+END
